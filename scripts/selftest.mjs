@@ -27,15 +27,15 @@ if (!existsSync(modelPath)) {
   process.exit(2);
 }
 
-const worker = fork(fileURLToPath(new URL("../lib/worker.js", import.meta.url)), [], {
+const worker = fork(fileURLToPath(new URL("../lib/gigaam/worker.js", import.meta.url)), [], {
   stdio: ["ignore", "inherit", "inherit", "ipc"],
   serialization: "advanced",
   env: {
     ...process.env,
     GIGAAM_WORKER_OPTIONS: JSON.stringify({
       modelPath,
-      vocabPath: fileURLToPath(new URL("../assets/v3_vocab.txt", import.meta.url)),
-      featuresPath: fileURLToPath(new URL("../assets/gigaam_v3_features.onnx", import.meta.url)),
+      vocabPath: fileURLToPath(new URL("../lib/assets/v3_vocab.txt", import.meta.url)),
+      featuresPath: fileURLToPath(new URL("../lib/assets/gigaam_v3_features.onnx", import.meta.url)),
       threads: 2,
     }),
   },
