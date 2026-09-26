@@ -1,0 +1,31 @@
+# dsh-ru-voice-input bundle layer.
+#
+# One install gives a composer microphone that already understands Russian.
+# Four rows, the same shape the stock Voice input bundle uses, with three
+# differences that matter:
+#
+#   1. speech-to-text is lib/registry.js, a fork of the stock registry whose
+#      configure() lets a bare provider switch adopt a language the new
+#      provider accepts. Upstream validates the STORED language against the
+#      NEWLY selected provider, so switching recognizers silently reverts and
+#      the settings UI looks stuck.
+#   2. the default recognizer is the local Russian GigaAM v3 CTC provider, and
+#      the default language is ru, so a fresh profile works with no clicks.
+#   3. SenseVoice is absent by design: it ships no Russian, and its 239 MB
+#      download is not a cost a Russian profile should pay.
+#
+# Rows 1 and 2 use relative module specifiers, which the loader resolves inside
+# this package. That is what makes the bundle self-contained: a git-installed
+# package cannot depend on its own subdirectories, so the forks must live here.
+- insert:
+    - id: speech-to-text
+      name: ./lib/registry.js
+      config:
+        defaultProvider: gigaam-v3-ctc-local
+        language: ru
+    - id: speech-to-text-gigaam
+      name: ./lib/gigaam/index.js
+    - id: api-speech-to-text
+      name: '@deepseek-ai/dsh-experimental-api-speech-to-text'
+    - id: ui-voice-input
+      name: '@deepseek-ai/dsh-experimental-client-ui-voice-input'

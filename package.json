@@ -1,0 +1,36 @@
+{
+  "name": "dsh-ru-voice-input",
+  "version": "0.1.0",
+  "description": "Russian-first Voice input bundle for DeepSeek Harness: a microphone in the composer that already understands Russian. Local GigaAM v3 CTC (int8) is the default recognizer, ru is the default language, and the speech registry is forked so switching recognizers actually works.",
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/registry.js",
+  "exports": {
+    ".": "./lib/registry.js",
+    "./wave": "./lib/wave.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "files": [
+    "cordis.patch.yml",
+    "lib/**/*.js",
+    "lib/assets/*",
+    "README.md"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-experimental-api-speech-to-text": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-experimental-client-ui-voice-input": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-experimental-speech-to-text": "0.1.7-rc.2",
+    "onnxruntime-node": "1.30.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": "^3.18.3"
+  }
+}
