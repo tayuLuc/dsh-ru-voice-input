@@ -21,7 +21,8 @@
     "README.md",
     "scripts/*.mjs",
     "lib/**/*.js",
-    "test/**/*.mjs"
+    "test/**/*.mjs",
+    "LICENSE"
   ],
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
