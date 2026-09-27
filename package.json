@@ -22,7 +22,8 @@
     "scripts/*.mjs",
     "lib/**/*.js",
     "test/**/*.mjs",
-    "LICENSE"
+    "LICENSE",
+    "lib/**/*.py"
   ],
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
