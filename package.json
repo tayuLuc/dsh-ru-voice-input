@@ -40,8 +40,9 @@
   },
   "scripts": {
     "test": "node test/registry.mjs && node test/lexicon.mjs",
-    "provider": "node test/provider.mjs",
-    "models": "node scripts/models.mjs",
-    "warmth": "node test/warmth.mjs"
+    "test:provider": "node test/provider.mjs /tmp/stt-fixtures/short5.wav /Users/user/.dsh/models/gigaam-v3-ctc auto",
+    "test:warmth": "node test/warmth.mjs /Users/user/.dsh/models/gigaam-v3-ctc",
+    "selftest": "node scripts/selftest.mjs",
+    "models": "node scripts/models.mjs"
   }
 }
