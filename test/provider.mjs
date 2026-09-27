@@ -18,16 +18,17 @@ import { fileURLToPath } from "node:url";
 const here = fileURLToPath(new URL(".", import.meta.url));
 const wavPath = process.argv[2];
 const modelDirectory = resolve(process.argv[3] ?? join(process.env.HOME ?? "/root", ".dsh", "models", "gigaam-v3-ctc"));
-const engine = process.argv[4] ?? "metal";
+const engine = process.argv[4] ?? "auto";
 const ggufFile = "gigaam-v3-ctc-Q8_0.gguf";
 const onnxFile = "v3_ctc.int8.onnx";
-const modelName = engine === "e2e" ? "gigaam-mlx" : engine === "metal" ? ggufFile : onnxFile;
+const sidecar = engine === "mlx" || engine === "onnx-asr" || engine === "auto";
+const modelName = sidecar ? "sidecar" : engine === "gguf" ? ggufFile : onnxFile;
 
 if (wavPath === undefined) {
-  console.error("usage: node test/provider.mjs <recording.wav> [modelDirectory] [engine: e2e|metal|onnx]");
+  console.error("usage: node test/provider.mjs <recording.wav> [modelDirectory] [engine: auto|onnx-asr|mlx|gguf|onnx]");
   process.exit(2);
 }
-if (engine !== "e2e" && !existsSync(join(modelDirectory, modelName))) {
+if (!sidecar && !existsSync(join(modelDirectory, modelName))) {
   console.error(`provider: model ${modelName} is not in ${modelDirectory}`);
   console.error("prepare it first: the plugin downloads the pinned file into <modelDirectory>");
   process.exit(2);
@@ -83,6 +84,10 @@ const config = {
   language: "ru",
   engine,
   backend: "metal",
+  ortModel: "gigaam-v3-e2e-ctc",
+  ortProviders: "CPUExecutionProvider",
+  lexiconPath: "/nonexistent-stt-lexicon.json",
+  lexiconThreshold: 0.8,
   e2ePythonPath: "",
   e2eModel: "ctc",
   ggufOrigin: "https://huggingface.co",

@@ -1,18 +1,31 @@
-"""GigaAM v3 e2e sidecar for the DSH speech provider.
+"""GigaAM v3 sidecar for the DSH speech provider.
 
-MLX port of GigaAM v3 (Salute Developers, MIT), packaged as `gigaam-mlx`. It is
-the only engine in this family that emits punctuation and capitalisation: the
-CTC heads the provider also supports have a 34-token letter vocabulary and
-cannot produce either.
+One process, two Python backends, chosen by ``GIGAAM_ENGINE``:
 
-Protocol: on stdout one JSON object per line. On stdin a stream of frames,
-each a packed ``(request_id, payload_size)`` header followed by the payload —
-a canonical 16 kHz mono PCM16 WAV, the same bytes the Node provider receives
-from the browser. The model loads once at startup and stays warm for the life
-of the process; a ready line with ``id`` 0 is emitted once it is in memory.
+``onnx-asr``
+    The portable default. ``onnx_asr`` runs on CPU everywhere and on CUDA where
+    present, and the ``gigaam-v3-e2e-*`` heads emit punctuation and
+    capitalisation. This is the engine for a host that is not Apple Silicon,
+    and the one to keep if only a single engine can be installed.
+
+``mlx``
+    The Apple Silicon path. ``gigaam_mlx`` is the MLX port of the same e2e
+    models, noticeably faster than ONNX on an M-series GPU, and also punctuates.
+
+Both are pure Python wheels with no PyTorch, so one virtualenv serves either.
+The CTC-only engines (ONNX Runtime, GGUF) never reach this file: they need no
+Python at all.
+
+Protocol: a ``ready`` line on stdout once the model is in memory, then one
+length-prefixed frame per request and one JSON object per line in reply. Frames
+are packed ``(request_id, payload_size)`` followed by a canonical 16 kHz mono
+PCM16 WAV.
 
 Environment:
-    GIGAAM_E2E_MODEL     "ctc" (default, faster) or "rnnt" (slower, more accurate)
+    GIGAAM_ENGINE       "onnx-asr" (default) or "mlx"
+    GIGAAM_E2E_MODEL    "ctc" (faster) or "rnnt" (more accurate) for the MLX path
+    GIGAAM_ORT_MODEL    onnx-asr model name; default gigaam-v3-e2e-ctc
+    GIGAAM_ORT_PROVIDERS comma-separated onnxruntime providers; default CPU
 """
 from __future__ import annotations
 
@@ -27,37 +40,57 @@ import time
 FRAME_HEADER = struct.Struct(">II")
 
 
+def emit(payload: dict) -> None:
+    sys.stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    sys.stdout.flush()
+
+
+def load_onnx_asr(model_name: str, providers: str):
+    import onnx_asr
+
+    selected = [p.strip() for p in providers.split(",") if p.strip()]
+    model = onnx_asr.load_model(model_name, providers=selected)
+    return lambda path: model.recognize(path)
+
+
+def load_mlx(model_type: str):
+    import gigaam_mlx
+
+    model, tokenizer = gigaam_mlx.load_model(model_type)
+    return lambda path: gigaam_mlx.transcribe(model, tokenizer, path)
+
+
 def main() -> int:
-    # The model package prints download progress to stderr; keep stdout clean so
-    # the Node side can parse every line as JSON.
-    model_type = os.environ.get("GIGAAM_E2E_MODEL", "ctc")
+    engine = os.environ.get("GIGAAM_ENGINE", "onnx-asr")
+    started = time.perf_counter()
     try:
-        import gigaam_mlx
+        if engine == "mlx":
+            variant = os.environ.get("GIGAAM_E2E_MODEL", "ctc")
+            recognize = load_mlx(variant)
+            label = f"mlx:{variant}"
+        else:
+            model_name = os.environ.get("GIGAAM_ORT_MODEL", "gigaam-v3-e2e-ctc")
+            providers = os.environ.get("GIGAAM_ORT_PROVIDERS", "CPUExecutionProvider")
+            recognize = load_onnx_asr(model_name, providers)
+            label = f"{engine}:{model_name}"
     except Exception as error:  # noqa: BLE001 - reported to the host verbatim
-        sys.stderr.write(f"gigaam e2e: gigaam-mlx is not importable: {error}\n")
+        sys.stderr.write(f"gigaam sidecar: cannot load {engine}: {error}\n")
         return 2
 
-    stdout = sys.stdout
-    stdin = sys.stdin.buffer
-
-    def emit(payload: dict) -> None:
-        stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
-        stdout.flush()
-
-    # Load before announcing readiness, so the host's warm-up ping really means
-    # "the model is in memory" rather than "a process exists".
-    started = time.perf_counter()
-    model, tokenizer = gigaam_mlx.load_model(model_type)
+    # Announce readiness only after the weights are in memory, so the host's
+    # warm-up ping means "ready" rather than "a process exists".
     emit(
         {
             "id": 0,
             "ok": True,
             "ready": True,
-            "model": model_type,
+            "engine": engine,
+            "model": label,
             "loadSeconds": time.perf_counter() - started,
         }
     )
 
+    stdin = sys.stdin.buffer
     while True:
         header = stdin.read(FRAME_HEADER.size)
         if len(header) < FRAME_HEADER.size:
@@ -69,14 +102,14 @@ def main() -> int:
         temporary = None
         try:
             audio_seconds = (len(frame) - 44) / 32000 if len(frame) > 44 else 0.0
-            # The public entry point takes a path and decodes it with ffmpeg.
-            # ffmpeg is already inside the measured cost, and it keeps this
-            # sidecar on the package's supported API rather than its internals.
+            # Both backends take a path and decode it with ffmpeg, which is
+            # already inside the measured cost. Staying on their public API
+            # avoids depending on internals that move between releases.
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as handle:
                 handle.write(frame)
                 temporary = handle.name
             started = time.perf_counter()
-            text = gigaam_mlx.transcribe(model, tokenizer, temporary)
+            text = recognize(temporary)
             emit(
                 {
                     "id": request_id,
@@ -87,7 +120,7 @@ def main() -> int:
                 }
             )
         except Exception as error:  # noqa: BLE001 - one bad request must not kill the sidecar
-            emit({"id": request_id, "ok": False, "error": f"gigaam e2e: {error}"})
+            emit({"id": request_id, "ok": False, "error": f"gigaam {engine}: {error}"})
         finally:
             if temporary is not None:
                 try:

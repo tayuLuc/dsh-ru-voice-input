@@ -39,8 +39,7 @@
     "@deepseek-ai/schemastery": "^3.18.3"
   },
   "scripts": {
-    "test": "node test/registry.mjs",
-    "selftest": "node scripts/selftest.mjs",
+    "test": "node test/registry.mjs && node test/lexicon.mjs",
     "provider": "node test/provider.mjs"
   }
 }
