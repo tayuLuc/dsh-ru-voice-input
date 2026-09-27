@@ -52,37 +52,70 @@ allowBuilds:
 
 ## Движки
 
-Движок выбирается конфигом `engine`, по умолчанию `e2e`. Замер на этом хосте (Apple M1),
-прогретый, русская речь 5 с и 28.6 с:
+Движок выбирается конфигом `engine`. По умолчанию `auto`: на Apple Silicon берётся `mlx`,
+везде остальное — `onnx-asr`.
 
-| `engine` | Рантайм | RTF (5 с) | RTF (28.6 с) | Пунктуация |
-|---|---|---|---|---|
-| **`e2e`** (по умолчанию) | MLX, `gigaam-mlx` через Python-сайдкар | 0.027 | 0.017 | **есть** |
-| `metal` | GGUF Q8_0, `transcribe-cpp` | — | 0.016 | нет |
-| `onnx` | int8, `onnxruntime-node` | 0.038 | 0.043 | нет |
+| `engine` | Что внутри | Mac | Nvidia | CPU | Пунктуация |
+|---|---|---|---|---|---|
+| `auto` | выбирает сам | есть | есть | есть | **есть** |
+| `mlx` | `gigaam-mlx`, чистый MLX | есть | нет | нет | **есть** |
+| `onnx-asr` | `onnx-asr`, e2e через onnxruntime | есть | есть, CUDA | есть | **есть** |
+| `gguf` | GGUF Q8_0 через `transcribe-cpp` | есть, Metal | есть, CUDA | есть | нет |
+| `onnx` | int8 через `onnxruntime-node` | есть | есть | есть | нет |
 
-**Только `e2e` даёт пунктуацию и заглавные.** Словарь CTC-голов GigaAM — 34 токена: `▁`, 32
-русские буквы и `<blk>`. Знаков препинания в нём нет физически, поэтому `metal` и `onnx` не
-могут их выдать ни при какой настройке.
+Замеры на Apple M1, прогретые, русская речь 5 с и 28.6 с:
+
+| движок | RTF 5 с | RTF 28.6 с |
+|---|---|---|
+| `mlx` (e2e ctc) | 0.027 | 0.017 |
+| `onnx-asr` (e2e ctc) | 0.048 | — |
+| `gguf` (Q8_0) | — | 0.016 |
+| `onnx` (int8) | 0.038 | 0.043 |
+
+**Пунктуацию дают только e2e-движки.** Словарь CTC-голов GigaAM — 34 токена: `▁`, 32 русские
+буквы и `<blk>`. Знаков препинания в нём нет физически, поэтому `gguf` и `onnx` не могут их
+выдать ни при какой настройке.
 
 Пример одного и того же места: `панель а показывает` (CTC) против `Панель A показывает` (e2e).
 
-### Требования движка `e2e`
+Кванты зависят от платформы, и это учтено: MLX-кванты годятся только на Apple Silicon, GGUF
+работает и через Metal, и через CUDA, а ONNX int8 — единый формат для всех.
 
-Python ≥ 3.10 с установленным `gigaam-mlx` и `ffmpeg` в PATH:
+### Python-движки
+
+Python ≥ 3.10 и `ffmpeg` в PATH:
 
 ```bash
 uv venv ~/.dsh/venvs/gigaam-mlx --python 3.12
 uv pip install --python ~/.dsh/venvs/gigaam-mlx/bin/python \
   "gigaam-mlx @ git+https://github.com/aystream/gigaam-mlx.git"
+uv pip install --python ~/.dsh/venvs/gigaam-mlx/bin/python onnx-asr onnxruntime
 ```
 
-Путь ищется так: поле `e2ePythonPath`, иначе `$GIGAAM_MLX_PYTHON`, иначе
-`<dsh home>/venvs/gigaam-mlx/bin/python`. Веса модель качает сама в кэш Hugging Face.
+Один venv обслуживает оба сайдкара; на не-Apple достаточно поставить только `onnx-asr`.
+Путь ищется так: `e2ePythonPath`, иначе `$GIGAAM_MLX_PYTHON`, иначе
+`<dsh home>/venvs/gigaam-mlx/bin/python`. Веса движок качает сам в кэш Hugging Face.
 
-**Цена первого запроса.** В свежем процессе MLX компилирует пайплайн: первый ответ ~1.7 с
-против 0.13 с прогретого, дальше 0.027 RTF. Поэтому `idleTimeoutMs: 0` ставить не стоит:
-воркер должен переживать паузу между записями.
+**Цена первого запроса.** В свежем процессе движок компилирует пайплайн: первый ответ ~1.7 с
+против 0.13 с прогретого. `idleTimeoutMs: 0` ставить не стоит — воркер должен переживать
+паузу между записями.
+
+## Словарь
+
+Распознаватели маленькие, и имена они коверкают. Ни один из рантаймов не умеет hotword-биасинг,
+поэтому коррекция идёт по тексту после распознавания.
+
+Словарь — JSON-массив в `~/.dsh/stt-lexicon.json`:
+
+```json
+["Sisyphus", "авто-брайн", "dsh", "GigaAM", "obsidian"]
+```
+
+Термин подставляется только если его **нет** в тексте и найденное слово **достаточно**
+похоже (`lexiconThreshold`, по умолчанию 0.8). Порог режет и ложные срабатывания, и случаи
+вроде `Сизифус` → `Sisyphus`: восстановить тяжёлую транслитерацию строковой мерой нельзя, и
+гадать хуже, чем оставить слово как есть. Чистые случаи вроде `дш` → `dsh` и `гигаам` →
+`GigaAM` ловятся, потому что сводятся через одну раскладку букв.
 
 ## Почему реестр форкнут
 
@@ -107,7 +140,7 @@ this.selectedProvider(id, patch.language ?? this.config.language.get());
 ## Проверка
 
 ```bash
-npm test                              # реестр: переключение провайдера, 11 проверок
+npm test                              # реестр (11 проверок) + словарь (12 проверок)
 node test/provider.mjs <clip.wav>     # провайдер: регистрация, prepare, расшифровка
 ```
 
@@ -117,7 +150,7 @@ node test/provider.mjs <clip.wav>     # провайдер: регистраци
 Живой замер движка:
 
 ```bash
-node test/provider.mjs <clip.wav> ~/.dsh/models/gigaam-v3-ctc e2e    # или metal, onnx
+node test/provider.mjs <clip.wav> ~/.dsh/models/gigaam-v3-ctc auto   # или onnx-asr, mlx, gguf, onnx
 node scripts/selftest.mjs <clip.wav> ~/.dsh/models/gigaam-v3-ctc onnx  # замер только Node-движков
 ```
 
