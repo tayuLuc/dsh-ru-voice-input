@@ -21,13 +21,13 @@ const modelDirectory = resolve(process.argv[3] ?? join(process.env.HOME ?? "/roo
 const engine = process.argv[4] ?? "metal";
 const ggufFile = "gigaam-v3-ctc-Q8_0.gguf";
 const onnxFile = "v3_ctc.int8.onnx";
-const modelName = engine === "metal" ? ggufFile : onnxFile;
+const modelName = engine === "e2e" ? "gigaam-mlx" : engine === "metal" ? ggufFile : onnxFile;
 
 if (wavPath === undefined) {
-  console.error("usage: node test/provider.mjs <recording.wav> [modelDirectory] [engine: metal|onnx]");
+  console.error("usage: node test/provider.mjs <recording.wav> [modelDirectory] [engine: e2e|metal|onnx]");
   process.exit(2);
 }
-if (!existsSync(join(modelDirectory, modelName))) {
+if (engine !== "e2e" && !existsSync(join(modelDirectory, modelName))) {
   console.error(`provider: model ${modelName} is not in ${modelDirectory}`);
   console.error("prepare it first: the plugin downloads the pinned file into <modelDirectory>");
   process.exit(2);
@@ -83,6 +83,8 @@ const config = {
   language: "ru",
   engine,
   backend: "metal",
+  e2ePythonPath: "",
+  e2eModel: "ctc",
   ggufOrigin: "https://huggingface.co",
   ggufRepo: "handy-computer/gigaam-v3-ctc-gguf",
   ggufRevision: "696b1bc14be5a4c423090bdc31da27793def4065",
