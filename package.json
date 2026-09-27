@@ -20,8 +20,8 @@
     "lib/assets/*",
     "README.md",
     "scripts/*.mjs",
-    "test/**/*.mjs",
-    "lib/**/*.js"
+    "lib/**/*.js",
+    "test/**/*.mjs"
   ],
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
@@ -38,6 +38,7 @@
   },
   "scripts": {
     "test": "node test/registry.mjs",
-    "selftest": "node scripts/selftest.mjs"
+    "selftest": "node scripts/selftest.mjs",
+    "provider": "node test/provider.mjs"
   }
 }
