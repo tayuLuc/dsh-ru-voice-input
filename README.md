@@ -151,6 +151,7 @@ node test/provider.mjs <clip.wav>     # провайдер: регистраци
 
 ```bash
 node test/provider.mjs <clip.wav> ~/.dsh/models/gigaam-v3-ctc auto   # или onnx-asr, mlx, gguf, onnx
+node scripts/models.mjs                  # что лежит на диске и что можно убрать
 node scripts/selftest.mjs <clip.wav> ~/.dsh/models/gigaam-v3-ctc onnx  # замер только Node-движков
 ```
 

@@ -25,6 +25,21 @@
         language: ru
     - id: speech-to-text-gigaam
       name: ./lib/gigaam/index.js
+      # Written out in full so the provider's settings card materialises every
+      # knob instead of showing a blank one. The values are the schema defaults:
+      # edit them here, or from the plugin details, to pin a different engine,
+      # model, quant or execution provider.
+      config:
+        engine: auto
+        e2eModel: ctc
+        ortModel: gigaam-v3-e2e-ctc
+        ortProviders: CPUExecutionProvider
+        e2ePythonPath: ''
+        backend: metal
+        threads: 2
+        idleTimeoutMs: 120000
+        lexiconPath: ''
+        lexiconThreshold: 0.8
     - id: api-speech-to-text
       name: '@deepseek-ai/dsh-experimental-api-speech-to-text'
     - id: ui-voice-input
