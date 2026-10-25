@@ -167,5 +167,5 @@ node scripts/selftest.mjs <clip.wav> ~/.dsh/models/gigaam-v3-ctc onnx  # зам�
 
 ## Лицензия
 
-MIT. Форк реестра — производная от `@deepseek-ai/dsh-experimental-speech-to-text` 0.1.7-rc.2.
+MIT. Форк реестра — производная от `@deepseek-ai/dsh-experimental-speech-to-text` (база 0.2.1-rc.2, `lib/` идентичен 0.1.7-rc.2). Совместимость с хостом задаётся `engines.dsh` (`>=0.2.1-rc.2`), а не пином версии: гейт dsh-app-boot проверяет бандл по этой строке.
 Веса модели не входят в поставку: провайдер тянет их сам по закреплённой ревизии.
