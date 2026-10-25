@@ -24,7 +24,7 @@ const stockPath = join(
   homedir(),
   ".dsh",
   "profiles",
-  "web",
+  process.env.DSH_PARITY_PROFILE || "tauri",
   "node_modules",
   "@deepseek-ai",
   "dsh-experimental-speech-to-text",
