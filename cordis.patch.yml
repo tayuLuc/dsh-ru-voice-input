@@ -1,46 +1,50 @@
 # dsh-ru-voice-input bundle layer.
 #
 # One install gives a composer microphone that already understands Russian.
-# Top-level rows are the ones the user can toggle from Settings: a plugin is
-# addressable by the plugin manager (setPluginEnabled) only when its row lives
-# in the profile's own patch layer with a matching id+name — a row inserted by
-# a bundle is read-only to the manager (measured 29.10, dsh-plugin-manager
-# listPlugins: readOnlyReason "unaddressable"). The microphone UI is therefore
-# a top-level row, not an insert.
 #
-#   1. speech-to-text is the STOCK package: as of rc.3 upstream added provider
-#      configure(), which is exactly what our providers declare (language tags
-#      from their own info.languages), so the historic fork lib/registry.js is
-#      retired (its fix only mattered for 0.1.x, where the stock registry
-#      lacked configure() entirely). The fork file remains for parity tests and
-#      as the documented 0.1.x path.
+# The layer order is the application order (app-boot: readProfilePatches
+# concatenates bundle patches in dsh.profile.bundles order, then the profile
+# patch, then home/overlays; composeEntries folds them in one applyEntryPatches
+# pass). Two rules of that fold decide every row shape below (read from the
+# app-boot 0.2.1-rc.4 source and measured live 30.10, `dsh --dump-config`
+# warnings — this exact file lost three times to not knowing them):
+#   - `name` on a row is a MISMATCH GUARD, never a rename: a row whose name
+#     differs from the module the id already holds is skipped;
+#   - a row for an id no earlier layer inserted is "not found"; only the
+#     nameless `{insert: [...]}` append runs unconditionally.
+# The stock voice bundle is listed AFTER ours, so a named row of ours for a
+# stock id (ui-voice-input, sensevoice) is always a preview for its own
+# entries and never overrides theirs; the profile's own user patch applies
+# after every bundle and is the legal override layer (that is where the
+# operator's Settings toggles live).
+#
+#   1. speech-to-text: the id belongs to the stock voice bundle when that
+#      bundle is installed (its layer applies after ours; the fold skips a
+#      named row whose name clashes with the entry the id holds), so in a
+#      stock-bundle profile the STOCK registry runs and the profile's user
+#      patch carries the selection config (a nameless config-only row merges
+#      by id). Where no stock bundle exists, the insert below mounts our fork
+#      (contract-fork of the registry + configure() provider-switch fix +
+#      live-set/persist-attempt write).
 #   2. the default recognizer is the local Russian GigaAM v3 CTC provider, and
 #      the default language is ru, so a fresh profile works with no clicks.
-#   3. SenseVoice is disabled by design: it ships no Russian, and its bundle
-#      writes registry defaults over ours.
-- id: api-speech-to-text
-  name: '@deepseek-ai/dsh-experimental-api-speech-to-text'
-- id: ui-voice-input
-  name: '@deepseek-ai/dsh-experimental-client-ui-voice-input'
-- id: speech-to-text-sensevoice
-  disabled: true
-
-# Provider rows: inserted here so the mount order is ours, and their config
-# materialises in full on the settings card.
+#   3. SenseVoice is absent by design: it ships no Russian, and its 239 MB
+#      download is not a cost a Russian profile should pay.
+#
+# Rows 1 and 2 use relative module specifiers, which the loader resolves inside
+# this package. That is what makes the bundle self-contained: a git-installed
+# package cannot depend on its own subdirectories, so the forks must live here.
+# The registry id belongs to the stock voice bundle in this profile (its layer
+# applies after ours; a named row of ours for that id is skipped by the fold —
+# measured 30.10). The selection config therefore lives in the STOCK registry:
+# rc.4 gained provider configure() (the historic fork fix is moot), and its
+# selection persistence rides the volatile write path. The fork insert below is
+# scoped to a fresh profile without the stock bundle: the insert creates the
+# entry when nobody owns the id, and in this profile the stock row wins and the
+# fork stays a documented opt-in (README § Registry fork).
 - insert:
-    # Registry is the STOCK rc.4 package (dsh core ships it, 0.2.1-rc.4): the
-    # rc.3 upstream diff added provider `configure`, which the stock 0.1.7
-    # registry lacks, so the fork is retired as of 0.9.0. Our provider's
-    # language `ru` is in the provider's own list, so the stock configure()
-    # validation does not bite for it.
     - id: speech-to-text
       name: ./lib/registry.js
-      # Our registry fork (upstream contract + the configure() provider-switch
-      # fix + a live-set/persist-attempt selection write). rc.4 upstream is not
-      # a drop-in here: the host profile ships its schema without volatile
-      # metadata (measured 29.10: settings/describe refs carry no volatile
-      # flags), so speech/configure persisted nothing and a selection made in
-      # the UI died with the boot. The fork keeps working on any runtime.
       config:
         defaultProvider: gigaam-v3-ctc-local
         language: ru
@@ -61,3 +65,5 @@
         idleTimeoutMs: 120000
         lexiconPath: ''
         lexiconThreshold: 0.8
+
+
