@@ -39,7 +39,7 @@ allowBuilds:
 
 | Слой | Что это |
 |---|---|
-| `./lib/registry.js` | форк `speech-to-text` с починенным `configure()` |
+| `./lib/registry.js` | исторический форк `speech-to-text` (чин `configure()` для 0.1.x); с rc.3 штатный реестр умеет provider configure, слой монтируется штатным пакетом |
 | `./lib/gigaam/index.js` | провайдер GigaAM v3 CTC на `onnxruntime-node` или `transcribe-cpp` |
 | `@deepseek-ai/dsh-experimental-api-speech-to-text` | мост браузер↔хост, штатный |
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | кнопка микрофона, штатная |

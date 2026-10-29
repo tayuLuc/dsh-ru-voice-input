@@ -4,11 +4,12 @@
 # Four rows, the same shape the stock Voice input bundle uses, with three
 # differences that matter:
 #
-#   1. speech-to-text is lib/registry.js, a fork of the stock registry whose
-#      configure() lets a bare provider switch adopt a language the new
-#      provider accepts. Upstream validates the STORED language against the
-#      NEWLY selected provider, so switching recognizers silently reverts and
-#      the settings UI looks stuck.
+#   1. speech-to-text is the STOCK package: as of the rc.3 upstream release the
+#      registry gained provider configure(), which is exactly what our providers
+#      declare (language tags from their own info.languages), so the historic
+#      fork lib/registry.js is retired (its fix only mattered for 0.1.x, where
+#      the stock registry lacked configure() entirely). The fork file remains
+#      for the parity tests and as the documented 0.1.x path.
 #   2. the default recognizer is the local Russian GigaAM v3 CTC provider, and
 #      the default language is ru, so a fresh profile works with no clicks.
 #   3. SenseVoice is absent by design: it ships no Russian, and its 239 MB
@@ -18,8 +19,13 @@
 # this package. That is what makes the bundle self-contained: a git-installed
 # package cannot depend on its own subdirectories, so the forks must live here.
 - insert:
+    # Registry is the STOCK rc.4 package (dsh core ships it, 0.2.1-rc.4): the
+    # rc.3 upstream diff added provider `configure`, which the stock 0.1.7
+    # registry lacks, so the fork is retired as of 0.9.0 (see README § Registry
+    # fork). Our provider's language `ru` is in the provider's own list, so the
+    # stock configure() validation does not bite for it.
     - id: speech-to-text
-      name: ./lib/registry.js
+      name: '@deepseek-ai/dsh-experimental-speech-to-text'
       config:
         defaultProvider: gigaam-v3-ctc-local
         language: ru
