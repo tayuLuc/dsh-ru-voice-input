@@ -1,29 +1,38 @@
 # dsh-ru-voice-input bundle layer.
 #
 # One install gives a composer microphone that already understands Russian.
-# Four rows, the same shape the stock Voice input bundle uses, with three
-# differences that matter:
+# Top-level rows are the ones the user can toggle from Settings: a plugin is
+# addressable by the plugin manager (setPluginEnabled) only when its row lives
+# in the profile's own patch layer with a matching id+name — a row inserted by
+# a bundle is read-only to the manager (measured 29.10, dsh-plugin-manager
+# listPlugins: readOnlyReason "unaddressable"). The microphone UI is therefore
+# a top-level row, not an insert.
 #
-#   1. speech-to-text is the STOCK package: as of the rc.3 upstream release the
-#      registry gained provider configure(), which is exactly what our providers
-#      declare (language tags from their own info.languages), so the historic
-#      fork lib/registry.js is retired (its fix only mattered for 0.1.x, where
-#      the stock registry lacked configure() entirely). The fork file remains
-#      for the parity tests and as the documented 0.1.x path.
+#   1. speech-to-text is the STOCK package: as of rc.3 upstream added provider
+#      configure(), which is exactly what our providers declare (language tags
+#      from their own info.languages), so the historic fork lib/registry.js is
+#      retired (its fix only mattered for 0.1.x, where the stock registry
+#      lacked configure() entirely). The fork file remains for parity tests and
+#      as the documented 0.1.x path.
 #   2. the default recognizer is the local Russian GigaAM v3 CTC provider, and
 #      the default language is ru, so a fresh profile works with no clicks.
-#   3. SenseVoice is absent by design: it ships no Russian, and its 239 MB
-#      download is not a cost a Russian profile should pay.
-#
-# Rows 1 and 2 use relative module specifiers, which the loader resolves inside
-# this package. That is what makes the bundle self-contained: a git-installed
-# package cannot depend on its own subdirectories, so the forks must live here.
+#   3. SenseVoice is disabled by design: it ships no Russian, and its bundle
+#      writes registry defaults over ours.
+- id: api-speech-to-text
+  name: '@deepseek-ai/dsh-experimental-api-speech-to-text'
+- id: ui-voice-input
+  name: '@deepseek-ai/dsh-experimental-client-ui-voice-input'
+- id: speech-to-text-sensevoice
+  disabled: true
+
+# Provider rows: inserted here so the mount order is ours, and their config
+# materialises in full on the settings card.
 - insert:
     # Registry is the STOCK rc.4 package (dsh core ships it, 0.2.1-rc.4): the
     # rc.3 upstream diff added provider `configure`, which the stock 0.1.7
-    # registry lacks, so the fork is retired as of 0.9.0 (see README § Registry
-    # fork). Our provider's language `ru` is in the provider's own list, so the
-    # stock configure() validation does not bite for it.
+    # registry lacks, so the fork is retired as of 0.9.0. Our provider's
+    # language `ru` is in the provider's own list, so the stock configure()
+    # validation does not bite for it.
     - id: speech-to-text
       name: '@deepseek-ai/dsh-experimental-speech-to-text'
       config:
@@ -46,7 +55,3 @@
         idleTimeoutMs: 120000
         lexiconPath: ''
         lexiconThreshold: 0.8
-    - id: api-speech-to-text
-      name: '@deepseek-ai/dsh-experimental-api-speech-to-text'
-    - id: ui-voice-input
-      name: '@deepseek-ai/dsh-experimental-client-ui-voice-input'
