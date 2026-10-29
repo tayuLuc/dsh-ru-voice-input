@@ -34,14 +34,16 @@
 # Rows 1 and 2 use relative module specifiers, which the loader resolves inside
 # this package. That is what makes the bundle self-contained: a git-installed
 # package cannot depend on its own subdirectories, so the forks must live here.
-# The registry id belongs to the stock voice bundle in this profile (its layer
-# applies after ours; a named row of ours for that id is skipped by the fold —
-# measured 30.10). The selection config therefore lives in the STOCK registry:
-# rc.4 gained provider configure() (the historic fork fix is moot), and its
-# selection persistence rides the volatile write path. The fork insert below is
-# scoped to a fresh profile without the stock bundle: the insert creates the
-# entry when nobody owns the id, and in this profile the stock row wins and the
-# fork stays a documented opt-in (README § Registry fork).
+# The registry id belongs to the stock voice bundle in a profile that installs
+# it (its layer applies after ours; a named row of ours for that id is skipped
+# by the fold — measured 30.10). The stock rc.4 registry is the mount there:
+# it gained provider configure() (the historic fork fix is moot) and the
+# selection persistence rides the host's volatile path. The fork insert below
+# is scoped to a fresh profile WITHOUT the stock bundle: the insert creates the
+# entry when nobody owns the id; there the fork is the mount, so it must select
+# GigaAM itself — that is the provider's `setAsDefaultProvider` config below
+# (the stock registry's own defaults name `sensevoice-local`, which exists
+# only in the stock bundle).
 - insert:
     - id: speech-to-text
       name: ./lib/registry.js
@@ -50,11 +52,17 @@
         language: ru
     - id: speech-to-text-gigaam
       name: ./lib/gigaam/index.js
+      # Self-select at mount: the registry defaults to a provider that is not
+      # registered in this bundle, so a fresh install would boot with a dead
+      # selection and the mic UI's "Speech recognition is not ready" card.
+      # Idempotent (configuring to the same selection) and best-effort (a
+      # rejected write is a warn, the mount survives).
       # Written out in full so the provider's settings card materialises every
       # knob instead of showing a blank one. The values are the schema defaults:
       # edit them here, or from the plugin details, to pin a different engine,
       # model, quant or execution provider.
       config:
+        setAsDefaultProvider: true
         engine: auto
         e2eModel: ctc
         ortModel: gigaam-v3-e2e-ctc
