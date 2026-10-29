@@ -76,8 +76,18 @@ async function run(Registry, scenario) {
     get: (name) => (name === "settings" ? { async update(_entry, patch) { Object.assign(state, patch); } } : undefined)
   };
   const service = new Registry(ctx, {
-    defaultProvider: { get: () => state.providerId },
-    language: { get: () => state.language }
+    defaultProvider: {
+      // Mirrors the host: the live config field reads the stored selection;
+      // `set` records the live value, and a settings write is what the host
+      // applies back (volatile fields live in memory, persistence is the
+      // settings path).
+      get: () => state.defaultProvider ?? state.providerId,
+      set: (value) => { state.defaultProvider = value; }
+    },
+    language: {
+      get: () => state.language,
+      set: (value) => { state.language = value; }
+    }
   });
   const outcome = { state: {} };
   try {

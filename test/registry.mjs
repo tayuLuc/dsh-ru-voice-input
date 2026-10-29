@@ -85,8 +85,14 @@ function mount(providers, stored) {
 		}
 	};
 	const config = {
-		defaultProvider: { get: () => state.defaultProvider ?? state.providerId },
-		language: { get: () => state.language }
+		defaultProvider: {
+			get: () => state.defaultProvider ?? state.providerId,
+			set: (value) => { state.defaultProvider = value; }
+		},
+		language: {
+			get: () => state.language,
+			set: (value) => { state.language = value; }
+		}
 	};
 	// The constructor subscribes to loader events and registers a disposal
 	// effect; both are inert here but must exist.

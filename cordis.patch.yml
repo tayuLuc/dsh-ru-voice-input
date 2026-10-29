@@ -34,7 +34,13 @@
     # language `ru` is in the provider's own list, so the stock configure()
     # validation does not bite for it.
     - id: speech-to-text
-      name: '@deepseek-ai/dsh-experimental-speech-to-text'
+      name: ./lib/registry.js
+      # Our registry fork (upstream contract + the configure() provider-switch
+      # fix + a live-set/persist-attempt selection write). rc.4 upstream is not
+      # a drop-in here: the host profile ships its schema without volatile
+      # metadata (measured 29.10: settings/describe refs carry no volatile
+      # flags), so speech/configure persisted nothing and a selection made in
+      # the UI died with the boot. The fork keeps working on any runtime.
       config:
         defaultProvider: gigaam-v3-ctc-local
         language: ru
