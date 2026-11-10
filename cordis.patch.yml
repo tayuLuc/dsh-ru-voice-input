@@ -18,38 +18,41 @@
 # after every bundle and is the legal override layer (that is where the
 # operator's Settings toggles live).
 #
-#   1. speech-to-text: the id belongs to the stock voice bundle when that
-#      bundle is installed (its layer applies after ours; the fold skips a
-#      named row whose name clashes with the entry the id holds), so in a
-#      stock-bundle profile the STOCK registry runs and the profile's user
-#      patch carries the selection config (a nameless config-only row merges
-#      by id). Where no stock bundle exists, the insert below mounts our fork
-#      (contract-fork of the registry + configure() provider-switch fix +
-#      live-set/persist-attempt write).
+#   1. speech-to-text: this bundle NEVER inserts a row for that id, and it must
+#      never start. The id belongs to the stock voice bundle, and a nameless
+#      insert appends unconditionally: inserting it yields two rows for one id
+#      in a stock-bundle profile. After every UI settings write the config
+#      editor recomposes the profile and requires the config of the FIRST row
+#      carrying that id to deep-equal what it just wrote
+#      (`dsh-config-editor/lib/index.js:96-121`), so the second row makes the
+#      provider and language selection permanently unwritable and the mic panel
+#      answers: Configuration for "speech-to-text" is overridden by a home
+#      patch or command-line overlay. A profile with no stock voice bundle that
+#      wants this package's fork registry opts in with one row in its OWN user
+#      patch, where the row is the only definition of the id and the editor's
+#      equality check stays satisfiable:
+#        - id: speech-to-text
+#          name: dsh-ru-voice-input/lib/registry.js
+#          config: { defaultProvider: gigaam-v3-ctc-local, language: ru }
 #   2. the default recognizer is the local Russian GigaAM v3 CTC provider, and
 #      the default language is ru, so a fresh profile works with no clicks.
 #   3. SenseVoice is absent by design: it ships no Russian, and its 239 MB
 #      download is not a cost a Russian profile should pay.
 #
-# Rows 1 and 2 use relative module specifiers, which the loader resolves inside
-# this package. That is what makes the bundle self-contained: a git-installed
-# package cannot depend on its own subdirectories, so the forks must live here.
+# The provider rows use relative module specifiers, which the loader resolves
+# inside this package. That is what makes the bundle self-contained: a
+# git-installed package cannot depend on its own subdirectories, so the forks
+# must live here.
 # The registry id belongs to the stock voice bundle in a profile that installs
-# it (its layer applies after ours; a named row of ours for that id is skipped
-# by the fold — measured 30.10). The stock rc.4 registry is the mount there:
-# it gained provider configure() (the historic fork fix is moot) and the
-# selection persistence rides the host's volatile path. The fork insert below
-# is scoped to a fresh profile WITHOUT the stock bundle: the insert creates the
-# entry when nobody owns the id; there the fork is the mount, so it must select
-# GigaAM itself — that is the provider's `setAsDefaultProvider` config below
-# (the stock registry's own defaults name `sensevoice-local`, which exists
-# only in the stock bundle).
+# it, and there the stock registry is the mount: it gained provider configure()
+# (the historic fork fix is moot) and the selection write rides the host's
+# settings path, which is legal for the operator only while this id has exactly
+# one row. lib/registry.js stays shipped in this package for the opt-in row
+# above: it is a contract-fork of the registry (configure() provider switch plus
+# a persist attempt that warns instead of throwing) and its Config keys are the
+# same two keys that row sets. The provider rows below mount against whichever
+# registry owns the id; they bind the service, not the module.
 - insert:
-    - id: speech-to-text
-      name: ./lib/registry.js
-      config:
-        defaultProvider: gigaam-v3-ctc-local
-        language: ru
     - id: speech-to-text-gigaam
       name: ./lib/gigaam/index.js
       # Self-select at mount: the registry defaults to a provider that is not

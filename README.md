@@ -39,16 +39,36 @@ allowBuilds:
 
 | Слой | Что это |
 |---|---|
-| `./lib/registry.js` | исторический форк `speech-to-text` (чин `configure()` для 0.1.x); с rc.3 штатный реестр умеет provider configure, слой монтируется штатным пакетом |
+| `./lib/registry.js` | исторический форк `speech-to-text` (чин `configure()` для 0.1.x); с rc.3 штатный реестр умеет provider configure, слой монтируется штатным пакетом — в слой ниже он не вставляется, см. «Один ряд на id» |
 | `./lib/gigaam/index.js` | провайдер GigaAM v3 CTC на `onnxruntime-node` или `transcribe-cpp` |
 | `@deepseek-ai/dsh-experimental-api-speech-to-text` | мост браузер↔хост, штатный |
 | `@deepseek-ai/dsh-experimental-client-ui-voice-input` | кнопка микрофона, штатная |
 
-Дефолты: распознаватель `gigaam-v3-ctc-local`, язык `ru`. Свежий профиль работает без кликов.
+Дефолты: распознаватель `gigaam-v3-ctc-local`, язык `ru`. Свежий профиль работает без кликов:
+провайдер выбирает себя сам на монтировании (`setAsDefaultProvider: true`), а не ряд реестра.
 
 Слои 1 и 2 заданы относительными спецификаторами — загрузчик их резолвит внутри пакета.
 Так бандл остаётся самодостаточным: пакет, поставленный из git, не может зависеть от
 собственных подкаталогов.
+
+## Один ряд на id
+
+Бандл не вставляет ряд на id `speech-to-text`, и вставлять его обратно нельзя. Nameless
+`insert` добавляет ряд безусловно, а id принадлежит штатному Voice input: в профиле со
+штатным бандлом выходит два ряда на один id. После каждой записи из Settings ядро
+пересобирает профиль и требует, чтобы config ПЕРВОГО ряда с этим id совпадал с записанным
+(`dsh-config-editor/lib/index.js:96-121`), поэтому второй ряд делает выбор провайдера и языка
+в панели постоянновыключенным с текстом `Configuration for "speech-to-text" is overridden by a
+home patch or command-line overlay`.
+
+Профилю без штатного Voice input, которому нужен этот форк-реестр, включать его своей строкой
+в собственном user-патче — там ряд единственный, и проверка ядра выполнима:
+
+```yaml
+- id: speech-to-text
+  name: dsh-ru-voice-input/lib/registry.js
+  config: { defaultProvider: gigaam-v3-ctc-local, language: ru }
+```
 
 ## Движки
 
